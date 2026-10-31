@@ -4,7 +4,7 @@ export type Transcriber = (
   audio: Buffer,
   streamId: string,
   sampleRate: number,
-) => Promise<void>;
+) => Promise<string>;
 export type FetchLike = typeof fetch;
 
 interface WhisperResponse {
@@ -67,6 +67,7 @@ function isWhisperResponse(value: unknown): value is WhisperResponse {
         console.log(`[TRANSCRIPTION] [${streamId}] no speech recognized`);
       }
       console.log(`[TRANSCRIPTION] [${streamId}] completed`);
+      return text;
     };
   }
 

@@ -4,13 +4,23 @@ export class TranscriptionQueue {
   private readonly queue: Buffer[] = [];
   private running = false;
   private readonly drainWaiters: Array<() => void> = [];
+  private onTranscriptionText?: (text: string) => Promise<void> | void;
+  private onTranscriptionError?: (error: unknown) => void;
 
   constructor(
     private readonly streamId: string,
     private readonly transcribe: Transcriber,
     private readonly capacity: number,
     private readonly sampleRate: number,
-  ) {}
+  ) { }
+
+  onTranscript(callback: (text: string) => Promise<void> | void): void {
+    this.onTranscriptionText = callback;
+  }
+
+  onError(callback: (error: unknown) => void): void {
+    this.onTranscriptionError = callback;
+  }
 
   enqueue(audio: Buffer): boolean {
     if (this.queue.length + Number(this.running) >= this.capacity) {
@@ -47,12 +57,16 @@ export class TranscriptionQueue {
         }
 
         try {
-          await this.transcribe(audio, this.streamId, this.sampleRate);
+          const text = await this.transcribe(audio, this.streamId, this.sampleRate);
+          if (this.onTranscriptionText) {
+            await this.onTranscriptionText(text);
+          }
         } catch (error) {
           console.error(
             `[TRANSCRIPTION] [${this.streamId}] failed:`,
             error,
           );
+          this.onTranscriptionError?.(error);
         }
       }
     } finally {
